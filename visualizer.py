@@ -1,0 +1,297 @@
+"""Interactive pollution maps with heatmaps and factory markers."""
+
+import folium
+from folium.plugins import HeatMap, MarkerCluster
+import numpy as np
+from typing import Dict, List, Optional
+import logging
+import config
+import os
+import time
+
+logging.basicConfig(level=config.LOG_LEVEL, format=config.LOG_FORMAT)
+logger = logging.getLogger(__name__)
+
+
+def format_value_for_display(value: float, gas: str) -> str:
+    """Format gas value with unit conversion."""
+    if value is None:
+        return "N/A"
+    gas_config = config.GAS_PRODUCTS.get(gas, {})
+    conversion = gas_config.get('conversion_factor', 1)
+    display_unit = gas_config.get('display_unit', 'mol/m²')
+    display_value = value * conversion
+
+    if gas == 'CH4':
+        return f"{display_value:.0f} {display_unit}"
+    elif display_value >= 1000:
+        return f"{display_value:.0f} {display_unit}"
+    elif display_value >= 100:
+        return f"{display_value:.1f} {display_unit}"
+    elif display_value >= 1:
+        return f"{display_value:.2f} {display_unit}"
+    elif display_value >= 0.001:
+        return f"{display_value:.3f} {display_unit}"
+    elif display_value > 0:
+        return f"{display_value:.2e} {display_unit}"
+    else:
+        return f"0 {display_unit}"
+
+
+class MapVisualizer:
+    """Creates interactive pollution maps with heatmaps and factory locations."""
+
+    def create_pollution_map(self, gas_data: Dict, wind_data: Dict,
+                           hotspot: Optional[Dict] = None,
+                           factories: Optional[List[Dict]] = None,
+                           violation: bool = False) -> folium.Map:
+        """Create pollution map with heatmap, wind arrow, and factory markers."""
+        city = gas_data['city']
+        gas = gas_data['gas']
+        city_config = config.CITIES[city]
+        
+        m = folium.Map(
+            location=city_config['center'],
+            zoom_start=11,
+            tiles='OpenStreetMap'
+        )
+
+        folium.TileLayer('Esri WorldImagery', name='Satellite').add_to(m)
+
+        pixels = gas_data.get('pixels', [])
+        if pixels:
+            threshold_config = config.GAS_THRESHOLDS.get(gas, {})
+            threshold = threshold_config.get('column_threshold')
+            critical_threshold = threshold_config.get('critical_threshold')
+
+            if threshold and critical_threshold:
+                heat_data_normalized = []
+                for p in pixels:
+                    if p['value'] < threshold:
+                        normalized = 0.5 * (p['value'] / threshold)
+                    elif p['value'] < critical_threshold:
+                        normalized = 0.5 + 0.3 * ((p['value'] - threshold) / (critical_threshold - threshold))
+                    else:
+                        normalized = 0.8 + 0.2 * min(1.0, (p['value'] - critical_threshold) / critical_threshold)
+                    heat_data_normalized.append([p['lat'], p['lon'], min(1.0, normalized)])
+                logger.info(f"Satellite-based threshold normalization applied")
+            else:
+                values = [p['value'] for p in pixels]
+                percentile_95 = np.percentile(values, 95) if len(values) > 1 else max(values)
+                max_val = max(percentile_95, max(values) * 0.5)
+                heat_data_normalized = [[p['lat'], p['lon'], min(1.0, p['value']/max_val)]
+                                       for p in pixels]
+                logger.info(f"Percentile-based normalization applied")
+
+            HeatMap(
+                heat_data_normalized,
+                name=f'{gas} Concentration',
+                radius=25,
+                blur=30,
+                min_opacity=0.3,
+                max_zoom=18,
+                gradient={
+                    0.0: '#00E400',
+                    0.2: '#92D050',
+                    0.4: '#FFFF00',
+                    0.5: '#FFC000',
+                    0.6: '#FF7E00',
+                    0.7: '#FF4500',
+                    0.8: '#FF0000',
+                    0.9: '#8F3F97',
+                    1.0: '#7E0023'
+                }
+            ).add_to(m)
+
+            logger.info(f"Heatmap created with {len(pixels)} pixels")
+
+        if hotspot:
+            icon_color = 'red' if violation else 'orange'
+            hotspot_formatted = format_value_for_display(hotspot['value'], gas)
+            folium.Marker(
+                location=[hotspot['lat'], hotspot['lon']],
+                popup=folium.Popup(
+                    f"<b>Maximum {gas} Concentration</b><br>"
+                    f"Value: {hotspot_formatted}<br>"
+                    f"Location: {hotspot['lat']:.4f}, {hotspot['lon']:.4f}",
+                    max_width=300
+                ),
+                tooltip=f"Peak {gas}: {hotspot_formatted}",
+                icon=folium.Icon(color=icon_color, icon='exclamation-triangle', prefix='fa')
+            ).add_to(m)
+
+            wind_confidence = wind_data.get('confidence', 0)
+            if (wind_data.get('success') and 
+                wind_data.get('direction_deg') is not None and 
+                wind_confidence > 0):
+                self._add_wind_arrow(m, hotspot, wind_data)
+
+        if factories:
+            factory_cluster = MarkerCluster(name='Factories').add_to(m)
+
+            for factory in factories:
+                if factory.get('likely_upwind'):
+                    color = 'red'
+                    icon = 'industry'
+                    priority = 'HIGH PRIORITY'
+                else:
+                    color = 'blue'
+                    icon = 'building'
+                    priority = 'Lower Priority'
+                
+                popup_html = f"""
+                <div style='width: 250px'>
+                    <h4>{factory['name']}</h4>
+                    <b>Type:</b> {factory['type']}<br>
+                    <b>Emissions:</b> {', '.join(factory['emissions'])}<br>
+                    <b>Distance from hotspot:</b> {factory.get('distance_km', 'N/A'):.1f} km<br>
+                    <b>Upwind likelihood:</b> {priority}<br>
+                    <b>Confidence:</b> {factory.get('confidence', 0):.0f}%<br>
+                    <b>Source:</b> {factory.get('source', 'Unknown')}
+                </div>
+                """
+                
+                folium.Marker(
+                    location=factory['location'],
+                    popup=folium.Popup(popup_html, max_width=300),
+                    tooltip=factory['name'],
+                    icon=folium.Icon(color=color, icon=icon, prefix='fa')
+                ).add_to(factory_cluster)
+        
+        threshold_config = config.GAS_THRESHOLDS.get(gas, {})
+        threshold = threshold_config.get('column_threshold', 'N/A')
+        critical = threshold_config.get('critical_threshold', 'N/A')
+
+        # Format all values with proper unit conversion
+        mean_formatted = format_value_for_display(gas_data['statistics'].get('mean', 0), gas)
+        peak_formatted = format_value_for_display(gas_data['statistics'].get('max', 0), gas)
+        threshold_formatted = format_value_for_display(threshold, gas) if isinstance(threshold, (int, float)) else "N/A"
+        critical_formatted = format_value_for_display(critical, gas) if isinstance(critical, (int, float)) else "N/A"
+
+        title_html = f'''
+        <div style="position: fixed;
+                    top: 10px; left: 50px; width: 500px; height: 140px;
+                    background-color: white; border:2px solid grey;
+                    z-index:9999; font-size:13px; padding: 10px;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+        <h4 style="margin:0; color: #333;">{city} - {gas_data.get("gas_name", gas)} Satellite Monitor</h4>
+        <p style="margin:5px 0; line-height:1.6;">
+        <b>📅 Time (KSA):</b> {gas_data.get('timestamp_ksa', 'N/A')}<br>
+        <b>📊 Mean:</b> {mean_formatted} |
+        <b>⚠️ Peak:</b> {peak_formatted}<br>
+        <b>📈 Threshold:</b> {threshold_formatted} |
+        <b>🚨 Critical:</b> {critical_formatted}<br>
+        <small style="color: #666;">Data: Sentinel-5P TROPOMI | Resolution: ~7km | Source: NASA/ESA</small>
+        </p>
+        </div>
+        '''
+        m.get_root().html.add_child(folium.Element(title_html))
+
+        legend_html = f'''
+        <div style="position: fixed;
+                    bottom: 50px; left: 50px; width: 220px;
+                    background-color: white; border:2px solid grey;
+                    z-index:9999; font-size:11px; padding: 10px;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+        <h5 style="margin:0 0 8px 0; color: #333;">Air Quality Scale</h5>
+        <div style="line-height:1.8;">
+            <div><span style="display:inline-block; width:20px; height:12px; background:#00E400; border:1px solid #ccc;"></span> Good - Safe levels</div>
+            <div><span style="display:inline-block; width:20px; height:12px; background:#FFFF00; border:1px solid #ccc;"></span> Moderate</div>
+            <div><span style="display:inline-block; width:20px; height:12px; background:#FF7E00; border:1px solid #ccc;"></span> Unhealthy (Threshold)</div>
+            <div><span style="display:inline-block; width:20px; height:12px; background:#FF0000; border:1px solid #ccc;"></span> Very Unhealthy</div>
+            <div><span style="display:inline-block; width:20px; height:12px; background:#8F3F97; border:1px solid #ccc;"></span> Severe</div>
+            <div><span style="display:inline-block; width:20px; height:12px; background:#7E0023; border:1px solid #ccc;"></span> Hazardous (Critical)</div>
+        </div>
+        <small style="color:#666; margin-top:5px; display:block;">Colors scaled to Sentinel-5P typical ranges</small>
+        </div>
+        '''
+        m.get_root().html.add_child(folium.Element(legend_html))
+
+        folium.LayerControl().add_to(m)
+        
+        logger.info(f"Map created for {city} - {gas}")
+        return m
+    
+    def _add_wind_arrow(self, m: folium.Map, hotspot: Dict, wind_data: Dict):
+        """Add wind direction arrow to map."""
+        wind_dir = wind_data['direction_deg']
+        distance_km = 5
+
+        lat1 = np.radians(hotspot['lat'])
+        lon1 = np.radians(hotspot['lon'])
+        bearing = np.radians(wind_dir)
+        R = 6371
+
+        lat2 = np.arcsin(np.sin(lat1) * np.cos(distance_km/R) +
+                         np.cos(lat1) * np.sin(distance_km/R) * np.cos(bearing))
+        lon2 = lon1 + np.arctan2(np.sin(bearing) * np.sin(distance_km/R) * np.cos(lat1),
+                                 np.cos(distance_km/R) - np.sin(lat1) * np.sin(lat2))
+        
+        lat2 = np.degrees(lat2)
+        lon2 = np.degrees(lon2)
+
+        wind_speed = wind_data.get('speed_ms', 0)
+        wind_dir = wind_data.get('direction_cardinal', 'N')
+        confidence = wind_data.get('confidence', 0)
+        source_label = wind_data.get('source_label', 'Unknown source')
+        
+        popup_text = f"""
+        <b>Wind Data</b><br>
+        Direction: {wind_dir} ({wind_data['direction_deg']:.0f}°)<br>
+        Speed: {wind_speed:.1f} m/s<br>
+        Confidence: {confidence:.0f}%<br>
+        Source: {source_label}
+        """
+
+        folium.PolyLine(
+            locations=[[hotspot['lat'], hotspot['lon']], [lat2, lon2]],
+            color='blue',
+            weight=4,
+            opacity=0.8,
+            popup=folium.Popup(popup_text, max_width=250)
+        ).add_to(m)
+
+        folium.Marker(
+            location=[lat2, lon2],
+            icon=folium.Icon(color='blue', icon='arrow-up', prefix='fa'),
+            tooltip=f"Wind: {wind_dir} {wind_speed:.1f} m/s"
+        ).add_to(m)
+
+    def save_map_as_image(self, html_path: str, output_image_path: str,
+                         width: int = 1200, height: int = 800) -> bool:
+        """Convert HTML map to PNG using selenium. Returns True if successful."""
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+
+            # Setup headless Chrome
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument(f'--window-size={width},{height}')
+
+            driver = webdriver.Chrome(options=chrome_options)
+
+            try:
+                file_url = f'file:///{os.path.abspath(html_path)}'
+                driver.get(file_url)
+                time.sleep(2)  # Wait for map to render
+                driver.save_screenshot(output_image_path)
+                logger.info(f"Map image saved to {output_image_path}")
+                return True
+
+            finally:
+                driver.quit()
+
+        except ImportError:
+            logger.warning("Selenium not installed. Install with: pip install selenium")
+            return False
+        except Exception as e:
+            logger.warning(f"Could not create map image: {e}")
+            logger.info("Vision analysis will be text-only. To enable map vision analysis, install Chrome and selenium.")
+            return False
