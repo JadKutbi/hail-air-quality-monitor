@@ -165,7 +165,7 @@ class PollutionAnalyzer:
         }
     
     def find_nearby_factories(self, hotspot: Dict, city: str,
-                            max_distance_km: float = 20.0) -> List[Dict]:
+                            max_distance_km: float = 250.0) -> List[Dict]:
         """Find factories within radius of hotspot."""
         factories = config.FACTORIES.get(city, [])
         nearby = []
