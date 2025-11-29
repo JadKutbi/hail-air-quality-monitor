@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebFetch(domain:globalenergyobservatory.org)",
+      "WebFetch(domain:www.gem.wiki)",
+      "WebFetch(domain:wikimapia.org)",
+      "WebFetch(domain:miningdataonline.com)"
     ],
     "deny": [],
     "ask": []

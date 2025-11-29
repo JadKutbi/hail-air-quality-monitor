@@ -12,7 +12,7 @@ import config
 logging.basicConfig(level=config.LOG_LEVEL, format=config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
-HAIL_BBOX = [40.8, 26.8, 42.5, 28.2]
+HAIL_BBOX = [40.0, 26.5, 44.0, 28.5]
 
 
 class RegionalScanner:

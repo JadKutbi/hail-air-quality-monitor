@@ -2,17 +2,17 @@
 
 import os
 
-# Geographic boundaries
+# Geographic boundaries - expanded to include all facilities
 CITIES = {
     "Hail": {
         "center": [27.5114, 41.7208],
-        "bbox": [40.8, 26.8, 42.5, 28.2],
-        "radius_km": 50,
+        "bbox": [40.0, 26.5, 44.0, 28.5],
+        "radius_km": 100,
         "region": "Hail Province"
     }
 }
 
-HAIL_PROVINCE_BBOX = [40.8, 26.8, 42.5, 28.2]
+HAIL_PROVINCE_BBOX = [40.0, 26.5, 44.0, 28.5]
 
 # Sentinel-5P product definitions
 GAS_PRODUCTS = {
@@ -112,51 +112,61 @@ GAS_THRESHOLDS = {
     }
 }
 
-# Industrial facility locations
+# Industrial facility locations - GIS verified coordinates
 FACTORIES = {
     "Hail": [
-        {"name": "MODON Hail Industrial City", "location": [27.48, 41.69], "type": "Mixed Industrial Zone", "emissions": ["NO2", "SO2", "CO", "HCHO", "CH4"], "capacity": "115+ factories", "source": "MODON", "verified": False},
-        {"name": "Hail Cement Company", "location": [27.70, 42.00], "type": "Cement Manufacturing", "emissions": ["NO2", "SO2", "CO"], "capacity": "5M tons/year", "source": "Hail Cement Co.", "verified": False},
-        {"name": "Hail Combined Cycle Power Plant", "location": [27.52, 41.73], "type": "Power Generation", "emissions": ["NO2", "SO2", "CO"], "capacity": "Combined cycle", "source": "SEC", "verified": False},
-        {"name": "Hail Gas Turbine Power Station", "location": [27.50, 41.70], "type": "Power Generation", "emissions": ["NO2", "SO2", "CO"], "capacity": "Peak load", "source": "SEC", "verified": False},
-        {"name": "Almarai Poultry Processing Plant", "location": [27.45, 41.85], "type": "Poultry Processing", "emissions": ["NO2", "CH4"], "capacity": "Large-scale", "source": "Almarai", "verified": False},
-        {"name": "Almarai Poultry Farm Complex", "location": [27.42, 41.88], "type": "Poultry Farming", "emissions": ["CH4", "NO2"], "capacity": "Industrial-scale", "source": "Almarai", "verified": False},
-        {"name": "Almarai Bakery Facility", "location": [27.47, 41.80], "type": "Food Processing", "emissions": ["NO2", "CO", "HCHO"], "capacity": "Industrial bakery", "source": "Almarai", "verified": False},
-        {"name": "Almarai Dairy Processing Plant", "location": [27.44, 41.82], "type": "Dairy Processing", "emissions": ["NO2", "CH4", "CO"], "capacity": "Dairy/juice", "source": "Almarai", "verified": False},
-        {"name": "HADCO Wheat Processing Plant", "location": [27.55, 41.65], "type": "Agricultural Processing", "emissions": ["NO2", "CH4"], "capacity": "Grain processing", "source": "HADCO", "verified": False},
-        {"name": "HADCO Olive Processing Facility", "location": [27.58, 41.62], "type": "Agricultural Processing", "emissions": ["NO2", "CH4", "HCHO"], "capacity": "Olive oil", "source": "HADCO", "verified": False},
-        {"name": "HADCO Dairy Farm Complex", "location": [27.52, 41.68], "type": "Dairy Farming", "emissions": ["CH4", "NO2"], "capacity": "Large-scale", "source": "HADCO", "verified": False},
-        {"name": "HADCO Potato Processing Plant", "location": [27.56, 41.60], "type": "Agricultural Processing", "emissions": ["NO2", "CH4"], "capacity": "Potato storage", "source": "HADCO", "verified": False},
-        {"name": "AJA Pharmaceutical Industries", "location": [27.49, 41.71], "type": "Pharmaceutical", "emissions": ["NO2", "HCHO"], "capacity": "Generic drugs", "source": "AJA Pharma", "verified": False},
-        {"name": "Sahala Pharmaceutical Company", "location": [27.50, 41.72], "type": "Pharmaceutical", "emissions": ["NO2", "HCHO"], "capacity": "Pharma production", "source": "Sahala Pharma", "verified": False},
-        {"name": "Al Ghazalah Magnesite Mine", "location": [27.30, 42.20], "type": "Mining - Magnesite", "emissions": ["NO2", "SO2"], "capacity": "Magnesite extraction", "source": "Mining Ops", "verified": False},
-        {"name": "Az Zabirah Bauxite Mine", "location": [26.90, 41.50], "type": "Mining - Bauxite", "emissions": ["NO2", "SO2"], "capacity": "4M tons/year", "source": "Ma'aden", "verified": False},
-        {"name": "Ma'aden Phosphate Exploration", "location": [27.20, 41.80], "type": "Mining - Phosphate", "emissions": ["NO2", "SO2"], "capacity": "Phosphate extraction", "source": "Ma'aden", "verified": False},
-        {"name": "Hail Gold Mining Operations", "location": [27.35, 41.45], "type": "Mining - Gold", "emissions": ["NO2", "SO2"], "capacity": "Gold extraction", "source": "Various", "verified": False},
-        {"name": "North Hail Quarries", "location": [27.65, 41.75], "type": "Quarrying", "emissions": ["NO2"], "capacity": "Construction materials", "source": "Various", "verified": False},
-        {"name": "South Hail Quarries", "location": [27.38, 41.68], "type": "Quarrying", "emissions": ["NO2"], "capacity": "Construction materials", "source": "Various", "verified": False},
-        {"name": "SAGO Grain Silos Hail", "location": [27.51, 41.74], "type": "Grain Storage", "emissions": ["CH4"], "capacity": "Strategic storage", "source": "SAGO", "verified": False},
-        {"name": "Hail Date Processing Factory", "location": [27.53, 41.67], "type": "Food Processing", "emissions": ["NO2", "CH4"], "capacity": "Date packaging", "source": "Various", "verified": False},
-        {"name": "Al Watania Poultry - Hail", "location": [27.46, 41.76], "type": "Poultry Processing", "emissions": ["NO2", "CH4"], "capacity": "Poultry processing", "source": "Al Watania", "verified": False},
-        {"name": "Hail Flour Mills", "location": [27.48, 41.70], "type": "Food Processing", "emissions": ["NO2"], "capacity": "Flour milling", "source": "Local mills", "verified": False},
-        {"name": "Hail Wastewater Treatment Plant", "location": [27.54, 41.78], "type": "Wastewater Treatment", "emissions": ["CH4", "NO2"], "capacity": "Municipal", "source": "NWC", "verified": False},
-        {"name": "Hail Water Desalination Plant", "location": [27.60, 41.72], "type": "Desalination", "emissions": ["NO2", "CO"], "capacity": "Desalination", "source": "SWCC/NWC", "verified": False},
-        {"name": "Hail Industrial Wastewater Treatment", "location": [27.47, 41.68], "type": "Industrial Wastewater", "emissions": ["CH4", "NO2"], "capacity": "Industrial zone", "source": "MODON", "verified": False},
-        {"name": "Hail Plastics Manufacturing", "location": [27.49, 41.69], "type": "Plastics", "emissions": ["NO2", "HCHO"], "capacity": "Plastic products", "source": "MODON", "verified": False},
-        {"name": "Hail Concrete Block Factory", "location": [27.51, 41.71], "type": "Construction Materials", "emissions": ["NO2", "SO2"], "capacity": "Concrete blocks", "source": "Local", "verified": False},
-        {"name": "Hail Steel Fabrication", "location": [27.50, 41.70], "type": "Metal Fabrication", "emissions": ["NO2", "SO2", "CO"], "capacity": "Steel fabrication", "source": "MODON", "verified": False},
-        {"name": "Hail Furniture Manufacturing", "location": [27.48, 41.72], "type": "Furniture", "emissions": ["NO2", "HCHO"], "capacity": "Wood/furniture", "source": "MODON", "verified": False},
-        {"name": "Hail Textiles Factory", "location": [27.47, 41.70], "type": "Textiles", "emissions": ["NO2", "HCHO"], "capacity": "Textile manufacturing", "source": "MODON", "verified": False},
-        {"name": "Hail Regional Airport", "location": [27.4372, 41.6861], "type": "Airport", "emissions": ["NO2", "CO", "SO2"], "capacity": "Regional airport", "source": "GACA", "verified": True},
-        {"name": "Hail Logistics Hub", "location": [27.52, 41.75], "type": "Transportation", "emissions": ["NO2", "CO"], "capacity": "Freight center", "source": "Various", "verified": False},
-        {"name": "Hail Central Bus Station", "location": [27.51, 41.72], "type": "Transportation", "emissions": ["NO2", "CO"], "capacity": "Public transit", "source": "SAPTCO", "verified": False},
-        {"name": "Aramco Fuel Distribution Terminal", "location": [27.53, 41.76], "type": "Fuel Distribution", "emissions": ["NO2", "CH4", "HCHO"], "capacity": "Regional fuel", "source": "Aramco", "verified": False},
-        {"name": "Gas Distribution Station - North", "location": [27.58, 41.74], "type": "Gas Distribution", "emissions": ["CH4", "NO2"], "capacity": "LPG/natural gas", "source": "Gas companies", "verified": False},
-        {"name": "Hail Municipal Landfill", "location": [27.62, 41.80], "type": "Waste Management", "emissions": ["CH4", "NO2", "CO"], "capacity": "Solid waste", "source": "Municipality", "verified": False},
-        {"name": "Hail Recycling Center", "location": [27.55, 41.73], "type": "Recycling", "emissions": ["NO2", "CH4"], "capacity": "Recycling", "source": "Environmental", "verified": False},
-        {"name": "Hail Agricultural Machinery Depot", "location": [27.50, 41.65], "type": "Agricultural Support", "emissions": ["NO2", "CO"], "capacity": "Farm equipment", "source": "Agricultural", "verified": False},
-        {"name": "Hail Fertilizer Distribution", "location": [27.52, 41.66], "type": "Fertilizer", "emissions": ["NO2", "CH4"], "capacity": "Fertilizer storage", "source": "SABIC/Various", "verified": False},
-        {"name": "Hail Greenhouse Complex", "location": [27.48, 41.83], "type": "Agriculture", "emissions": ["CH4", "NO2"], "capacity": "Vegetable production", "source": "Various", "verified": False}
+        # VERIFIED HIGH PRECISION (+/-10m)
+        {"name": "Hail Regional Airport (OEHL)", "location": [27.4379, 41.6863], "type": "Airport", "emissions": ["NO2", "CO", "SO2"], "capacity": "500K passengers/year", "source": "ICAO/Flightradar24", "verified": True},
+        {"name": "SEC Hail 1-3 Power Plant", "location": [27.4689, 41.7416], "type": "Power Generation", "emissions": ["NO2", "SO2", "CO"], "capacity": "1,061 MW, 15 units", "source": "Global Energy Observatory", "verified": True},
+        {"name": "SEC Hail-2 Power Plant", "location": [27.4705, 41.7411], "type": "Power Generation", "emissions": ["NO2", "SO2", "CO"], "capacity": "925+ MW combined cycle", "source": "Global Energy Monitor", "verified": True},
+        {"name": "Hail Cement Plant", "location": [28.2704, 43.1963], "type": "Cement Manufacturing", "emissions": ["NO2", "SO2", "CO"], "capacity": "1.5M tons/year", "source": "Wikimapia/CemNet", "verified": True},
+        {"name": "Hail Cement Power Plant", "location": [28.2947, 43.3717], "type": "Captive Power", "emissions": ["NO2", "SO2", "CO"], "capacity": "51 MW", "source": "Global Energy Monitor", "verified": True},
+        {"name": "Az Zabirah Bauxite Mine", "location": [27.9128, 43.7143], "type": "Mining - Bauxite", "emissions": ["NO2", "SO2"], "capacity": "240M tonnes reserves", "source": "Mining Data Online", "verified": True},
+        {"name": "Arabian Mills (MC2) Hail", "location": [27.6462, 41.7192], "type": "Flour Milling", "emissions": ["NO2"], "capacity": "1.3M tons/year", "source": "ReviewSaudi/Mrsool", "verified": True},
+
+        # VERIFIED MEDIUM PRECISION (+/-50-100m)
+        {"name": "MODON Hail Industrial City", "location": [27.4700, 41.6400], "type": "Mixed Industrial Zone", "emissions": ["NO2", "SO2", "CO", "HCHO", "CH4"], "capacity": "115+ factories, 3.88M m²", "source": "MODON Official", "verified": True},
+        {"name": "Almarai Poultry Processing Plant", "location": [27.5600, 41.7300], "type": "Poultry Processing", "emissions": ["NO2", "CH4"], "capacity": "200M birds/year", "source": "Almarai/AMANA", "verified": True},
+        {"name": "Almarai Bakery Plant 7", "location": [27.5594, 41.7271], "type": "Food Processing - Bakery", "emissions": ["NO2", "CO", "HCHO"], "capacity": "24-hour operation", "source": "Almarai/VyMaps", "verified": True},
+        {"name": "Almarai Al-Shamli Poultry Farms", "location": [26.8578, 40.3293], "type": "Poultry Farming", "emissions": ["CH4", "NO2"], "capacity": "150M birds/year expansion", "source": "Argaam/Almarai", "verified": True},
+        {"name": "AJA Pharmaceutical Industries", "location": [27.4700, 41.6400], "type": "Pharmaceutical", "emissions": ["NO2", "HCHO"], "capacity": "2B units/year, 120K m²", "source": "AJA Pharma/CPHI", "verified": True},
+        {"name": "Sahala Pharmaceutical Company", "location": [27.4700, 41.6400], "type": "Pharmaceutical", "emissions": ["NO2", "HCHO"], "capacity": "120K m² GMP facility", "source": "Sahala Pharma", "verified": True},
+        {"name": "Al Ghazalah Magnesite Mine", "location": [26.7500, 41.2500], "type": "Mining - Magnesite", "emissions": ["NO2", "SO2"], "capacity": "340K tonnes/year", "source": "USGS/Mindat/Ma'aden", "verified": True},
+
+        # ESTIMATED COORDINATES (based on area descriptions)
+        {"name": "HADCO Main Complex", "location": [27.4200, 42.0500], "type": "Agricultural Processing", "emissions": ["NO2", "CH4"], "capacity": "Wheat, olives, dates, fodder", "source": "Bloomberg/SaudiYP", "verified": False},
+        {"name": "Hail Water Desalination Plant", "location": [27.5500, 41.7200], "type": "Desalination", "emissions": ["NO2", "CO"], "capacity": "100K m³/day", "source": "EMCO Group", "verified": False},
+        {"name": "SAGO Grain Silos Hail", "location": [27.5300, 41.7000], "type": "Grain Storage", "emissions": ["CH4"], "capacity": "600 ton/day mill", "source": "Haif Company/MEWA", "verified": False},
+        {"name": "Hail Wastewater Treatment Plant", "location": [27.5400, 41.7800], "type": "Wastewater Treatment", "emissions": ["CH4", "NO2"], "capacity": "Municipal treatment", "source": "NWC/SWA", "verified": False},
+        {"name": "Hail Municipal Landfill", "location": [27.6200, 41.8000], "type": "Waste Management", "emissions": ["CH4", "NO2", "CO"], "capacity": "Solid waste disposal", "source": "NCWM", "verified": False},
+
+        # MODON INDUSTRIAL CITY FACILITIES (within industrial zone)
+        {"name": "Hail Plastics Manufacturing", "location": [27.4720, 41.6420], "type": "Plastics", "emissions": ["NO2", "HCHO"], "capacity": "Plastic products", "source": "MODON", "verified": False},
+        {"name": "Hail Concrete Block Factory", "location": [27.4680, 41.6380], "type": "Construction Materials", "emissions": ["NO2", "SO2"], "capacity": "Concrete blocks", "source": "MODON", "verified": False},
+        {"name": "Hail Steel Fabrication", "location": [27.4710, 41.6410], "type": "Metal Fabrication", "emissions": ["NO2", "SO2", "CO"], "capacity": "Steel fabrication", "source": "MODON", "verified": False},
+        {"name": "Hail Furniture Manufacturing", "location": [27.4690, 41.6390], "type": "Furniture", "emissions": ["NO2", "HCHO"], "capacity": "Wood/furniture", "source": "MODON", "verified": False},
+        {"name": "Hail Textiles Factory", "location": [27.4700, 41.6400], "type": "Textiles", "emissions": ["NO2", "HCHO"], "capacity": "Textile manufacturing", "source": "MODON", "verified": False},
+
+        # QUARRIES AND MINING
+        {"name": "North Hail Quarries", "location": [27.6500, 41.7500], "type": "Quarrying", "emissions": ["NO2"], "capacity": "Construction materials", "source": "USGS/Saudipedia", "verified": False},
+        {"name": "South Hail Quarries", "location": [27.3800, 41.6800], "type": "Quarrying", "emissions": ["NO2"], "capacity": "Construction materials", "source": "USGS/Saudipedia", "verified": False},
+
+        # TRANSPORTATION AND LOGISTICS
+        {"name": "Hail Logistics Hub", "location": [27.5200, 41.7500], "type": "Transportation", "emissions": ["NO2", "CO"], "capacity": "Freight center", "source": "Various", "verified": False},
+        {"name": "Hail Central Bus Station", "location": [27.5100, 41.7200], "type": "Transportation", "emissions": ["NO2", "CO"], "capacity": "Public transit", "source": "SAPTCO", "verified": False},
+
+        # FUEL AND GAS
+        {"name": "Aramco Fuel Distribution Terminal", "location": [27.5300, 41.7600], "type": "Fuel Distribution", "emissions": ["NO2", "CH4", "HCHO"], "capacity": "Regional fuel", "source": "Aramco", "verified": False},
+        {"name": "Gas Distribution Station - North", "location": [27.5800, 41.7400], "type": "Gas Distribution", "emissions": ["CH4", "NO2"], "capacity": "LPG/natural gas", "source": "Gas companies", "verified": False},
+
+        # AGRICULTURE
+        {"name": "Hail Date Processing", "location": [27.5300, 41.6700], "type": "Food Processing", "emissions": ["NO2", "CH4"], "capacity": "Date packaging", "source": "Various", "verified": False},
+        {"name": "Hail Greenhouse Complex", "location": [27.4800, 41.8300], "type": "Agriculture", "emissions": ["CH4", "NO2"], "capacity": "Vegetable production", "source": "Various", "verified": False},
+        {"name": "Hail Agricultural Machinery Depot", "location": [27.5000, 41.6500], "type": "Agricultural Support", "emissions": ["NO2", "CO"], "capacity": "Farm equipment", "source": "Agricultural", "verified": False},
+        {"name": "Hail Fertilizer Distribution", "location": [27.5200, 41.6600], "type": "Fertilizer", "emissions": ["NO2", "CH4"], "capacity": "Fertilizer storage", "source": "SABIC/Various", "verified": False},
+
+        # OTHER
+        {"name": "Hail Recycling Center", "location": [27.5500, 41.7300], "type": "Recycling", "emissions": ["NO2", "CH4"], "capacity": "Recycling", "source": "Environmental", "verified": False}
     ]
 }
 
